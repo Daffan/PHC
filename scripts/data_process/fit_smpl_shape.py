@@ -28,6 +28,7 @@ from easydict import EasyDict
 import hydra
 from omegaconf import DictConfig, OmegaConf
 from tqdm import tqdm
+import plotly.graph_objects as go
 
 @hydra.main(version_base=None, config_path="../../phc/data/cfg", config_name="config")
 def main(cfg : DictConfig) -> None:
@@ -97,7 +98,7 @@ def main(cfg : DictConfig) -> None:
     print("shape:",shape_new.detach())
     print("scale:",scale)
 
-    if cfg.get("vis", False):
+    if True:  # cfg.get("vis", False):
         from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
         import matplotlib.pyplot as plt
         
@@ -106,21 +107,30 @@ def main(cfg : DictConfig) -> None:
         j3d_joints = joints[:, smpl_joint_pick_idx].detach().numpy()
         j3d_joints = j3d_joints - j3d_joints[:, 0:1]
         idx = 0
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        ax.view_init(90, 0)
-        ax.scatter(j3d[idx, :,0], j3d[idx, :,1], j3d[idx, :,2], label='Humanoid Shape', c='blue')
-        ax.scatter(j3d_joints[idx, :,0], j3d_joints[idx, :,1], j3d_joints[idx, :,2], label='Fitted Shape', c='red')
+        # fig = plt.figure()
+        # ax = fig.add_subplot(111, projection='3d')
+        # ax.view_init(90, 0)
+        # ax.scatter(j3d[idx, :,0], j3d[idx, :,1], j3d[idx, :,2], label='Humanoid Shape', c='blue')
+        # ax.scatter(j3d_joints[idx, :,0], j3d_joints[idx, :,1], j3d_joints[idx, :,2], label='Fitted Shape', c='red')
 
-        ax.set_xlabel('X Label')
-        ax.set_ylabel('Y Label')
-        ax.set_zlabel('Z Label')
-        drange = 1
-        ax.set_xlim(-drange, drange)
-        ax.set_ylim(-drange, drange)
-        ax.set_zlim(-drange, drange)
-        ax.legend()
-        plt.show()
+        # ax.set_xlabel('X Label')
+        # ax.set_ylabel('Y Label')
+        # ax.set_zlabel('Z Label')
+        # drange = 1
+        # ax.set_xlim(-drange, drange)
+        # ax.set_ylim(-drange, drange)
+        # ax.set_zlim(-drange, drange)
+        # ax.legend()
+        # plt.show()
+        
+        data = [go.Scatter3d(x=j3d_joints[idx, :,0], y=j3d_joints[idx, :,1], z=j3d_joints[idx, :,2], mode='markers', name='Fitted Shape', marker=dict(size=4, color='red'))]
+        for i, name in enumerate(humanoid_fk.body_names):
+            data.append(go.Scatter3d(x=j3d[idx, i:i+1, 0], y=j3d[idx, i:i+1, 1], z=j3d[idx, i:i+1, 2], mode='markers', name=name, marker=dict(size=4))
+            )
+        fig = go.Figure(data=data)
+        fig.update_layout(scene=dict(aspectmode='data'))
+        os.makedirs(f"data/{cfg.robot.humanoid_type}", exist_ok=True)
+        fig.write_html(f"data/{cfg.robot.humanoid_type}/shape_optimized_v1.html")
 
     os.makedirs(f"data/{cfg.robot.humanoid_type}", exist_ok=True)
     joblib.dump((shape_new.detach(), scale), f"data/{cfg.robot.humanoid_type}/shape_optimized_v1.pkl") # V2 has hip joints

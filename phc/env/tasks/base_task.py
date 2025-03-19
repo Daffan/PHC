@@ -63,7 +63,7 @@ class BaseTask():
         self.headless = cfg["headless"]
         if self.headless == False and not flags.no_virtual_display:
             from pyvirtualdisplay.smartdisplay import SmartDisplay
-            self.virtual_display = SmartDisplay(size=(1800, 990), visible=True)
+            self.virtual_display = SmartDisplay(size=(1800, 990), backend='xvfb', visible=True)
             self.virtual_display.start()
 
         self.gym = gymapi.acquire_gym()
@@ -89,7 +89,7 @@ class BaseTask():
         self.num_actions = cfg["env"]["numActions"]
         self.is_discrete = cfg["env"].get("is_discrete", False)
 
-        self.control_freq_inv = cfg["control"].get("decimation", 2)
+        self.control_freq_inv = cfg["env"].get("controlFrequencyInv", 1)
 
         # optimization flags for pytorch JIT
         torch._C._jit_set_profiling_mode(False)
@@ -125,6 +125,7 @@ class BaseTask():
 
         # if running with a viewer, set up keyboard shortcuts and camera
         self.create_viewer()
+        flags.server_mode = flags.test
         if flags.server_mode:
             # bgsk = threading.Thread(target=self.setup_video_client, daemon=True).start()
             bgsk = threading.Thread(target=self.setup_talk_client, daemon=False).start()
@@ -259,7 +260,7 @@ class BaseTask():
 
     #print(URL)
     async def talk(self):
-        URL = 'http://klab-cereal.pc.cs.cmu.edu:8080/ws'
+        URL = 'http://0.0.0.0:8080/ws'
         print("Starting websocket client")
         session = aiohttp.ClientSession()
         async with session.ws_connect(URL) as ws:
@@ -291,9 +292,15 @@ class BaseTask():
                                 env_id = query['env']
                                 self.viewing_env_idx = int(env_id)
                                 print("view env idx: ", self.viewing_env_idx)
+                            elif msg['action'] == 'disable_collision_reset':
+                                flags.no_collision_check = not flags.no_collision_check
+                                print("collision_reset: ", flags.no_collision_check)
+                            elif msg['action'] == 'trigger_input':
+                                flags.trigger_input = not flags.trigger_input
+                                self.change_char_color()
+                                print("show_traj: ", flags.show_traj)
                         except:
-                            import ipdb
-                            ipdb.set_trace()
+                            import ipdb; ipdb.set_trace()
                             print("error parsing server message")
                 elif msg.type == aiohttp.WSMsgType.CLOSED:
                     break
@@ -302,7 +309,7 @@ class BaseTask():
 
     #print(URL)
     async def video_stream(self):
-        URL = 'http://klab-cereal.pc.cs.cmu.edu:8080/ws'
+        URL = 'http://0.0.0.0:8080/ws'
         print("Starting websocket client")
         session = aiohttp.ClientSession()
         async with session.ws_connect(URL) as ws:
@@ -404,7 +411,7 @@ class BaseTask():
             
             if self.recording_state_change:
                 if not self.recording:
-                    if not flags.server_mode:
+                    if flags.server_mode:
                         self.writer.close()
                         del self.writer
                         
@@ -416,7 +423,7 @@ class BaseTask():
                 self.recording_state_change = False
 
             if self.recording:
-                if not flags.server_mode:
+                if flags.server_mode:
                     if flags.no_virtual_display:
                         self.gym.render_all_camera_sensors(self.sim)
                         color_image = self.gym.get_camera_image(self.sim, self.envs[self.viewing_env_idx], self.recorder_camera_handles[self.viewing_env_idx], gymapi.IMAGE_COLOR)
@@ -424,16 +431,20 @@ class BaseTask():
                     else:
                         img = self.virtual_display.grab()
                         self.color_image = np.array(img)
-                        H, W, C = self.color_image.shape
-                        self.color_image = self.color_image[:(H - H % 2), :(W - W % 2), :]
+                        if not "H" in self.__dict__:
+                            H, W, C = self.color_image.shape
+                            self.H = (H - H % 2) - 10
+                            self.W = (W - W % 2) - 10
+                        
+                        self.color_image = self.color_image[:self.H, :self.W, :]
 
-                if not flags.server_mode:
+                if flags.server_mode:
                     if not "writer" in self.__dict__:
                         curr_date_time = datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
                         self.curr_video_file_name = self._video_path % curr_date_time
                         self.curr_states_file_name = self._states_path % curr_date_time
-                        if not flags.server_mode:
-                            self.writer = imageio.get_writer(self.curr_video_file_name, fps=int(1/self.dt), macro_block_size=None)
+                        if flags.server_mode:
+                            self.writer = imageio.get_writer(self.curr_video_file_name, fps=60, macro_block_size=None)
                     self.writer.append_data(self.color_image)
                     
                     

@@ -22,7 +22,7 @@ import joblib
 import gc
 from collections import defaultdict
 
-from poselib.poselib.skeleton.skeleton3d import SkeletonTree, SkeletonMotion, SkeletonState
+from poselib.skeleton.skeleton3d import SkeletonTree, SkeletonMotion, SkeletonState
 from scipy.spatial.transform import Rotation as sRot
 import open3d as o3d
 from datetime import datetime
@@ -936,14 +936,13 @@ class HumanoidIm(humanoid_amp_task.HumanoidAMPTask):
 
         # print(self.dof_force_tensor.abs().max())
         if self.power_reward:
-            power = torch.abs(torch.multiply(self.dof_force_tensor, self._dof_vel)).sum(dim=-1) 
+            power = torch.sum((self.dof_force_tensor * self._dof_vel).clip(min=0.0), dim=-1)
             # power_reward = -0.00005 * (power ** 2)
             power_reward = -self.power_coefficient * power
             power_reward[self.progress_buf <= 3] = 0 # First 3 frame power reward should not be counted. since they could be dropped.
 
             self.rew_buf[:] += power_reward
             self.reward_raw = torch.cat([self.reward_raw, power_reward[:, None]], dim=-1)
-        
         return
     
     def _reset_envs(self, env_ids):
@@ -1182,6 +1181,8 @@ class HumanoidIm(humanoid_amp_task.HumanoidAMPTask):
             self.reset_buf[:], self._terminate_buf[:] = compute_humanoid_im_reset(self.reset_buf, self.progress_buf, self._contact_forces, self._contact_body_ids, \
                                                                                body_pos, ref_body_pos, pass_time, self._enable_early_termination,
                                                                                self._termination_distances[..., self._reset_bodies_id], flags.no_collision_check, flags.im_eval and (not self.strict_eval))
+        
+        # import ipdb; ipdb.set_trace()
         is_recovery = torch.logical_and(~pass_time, self._cycle_counter > 0)  # pass time should override the cycle counter.
         self.reset_buf[is_recovery] = 0
         self._terminate_buf[is_recovery] = 0

@@ -749,6 +749,8 @@ class HumanoidAMP(Humanoid):
 
         env_ids = torch.arange(self.num_envs, dtype=torch.long, device=self.device)
 
+        import ipdb; ipdb.set_trace()
+
         self._set_env_state(env_ids=env_ids, root_pos=root_pos, root_rot=root_rot, dof_pos=dof_pos, root_vel=root_vel, root_ang_vel=root_ang_vel, dof_vel=dof_vel, rigid_body_pos=rb_pos, rigid_body_rot=rb_rot, rigid_body_vel=body_vel, rigid_body_ang_vel=body_ang_vel)
 
         self._reset_env_tensors(env_ids)
@@ -826,8 +828,8 @@ class HumanoidAMP(Humanoid):
 
     def _hack_output_motion(self):
         fps = 1.0 / self.dt
-        from poselib.poselib.skeleton.skeleton3d import SkeletonMotion, SkeletonState
-        from poselib.poselib.visualization.common import plot_skeleton_motion_interactive
+        from poselib.skeleton.skeleton3d import SkeletonMotion, SkeletonState
+        from poselib.visualization.common import plot_skeleton_motion_interactive
 
         if (not hasattr(self, '_output_motion_root_pos')):
             self._output_motion_root_pos = []

@@ -7,7 +7,7 @@ import numpy as np
 
 import subprocess
 
-HOST = os.getenv('HOST', '172.29.229.220')
+HOST = os.getenv('HOST', '0.0.0.0')
 # HOST = os.getenv('HOST', '0.0.0.0')
 # HOST = os.getenv('HOST', 'KLAB-BUTTER.PC.CS.CMU.EDU')
 PORT = int(os.getenv('PORT', 8080))
@@ -15,7 +15,7 @@ PORT = int(os.getenv('PORT', 8080))
 
 async def main():
     session = aiohttp.ClientSession()
-    URL = f'http://{HOST}:{PORT}/ws_talk'
+    URL = f'http://{HOST}:{PORT}/ws'
     async with session.ws_connect(URL) as ws:
 
         await prompt_and_send(ws)
@@ -52,11 +52,8 @@ async def prompt_and_send(ws):
     if new_msg_to_send == 'exit':
         print('Exiting!')
         raise SystemExit(0)
-    elif new_msg_to_send == "s":
-        # subprocess.Popen(["simplescreenrecorder", "--start-recording"])
-        pass
-    elif new_msg_to_send == "e":
-        pass
+    else:
+        new_msg_to_send = json.dumps({"action": new_msg_to_send})
 
     await ws.send_str(new_msg_to_send)
     return new_msg_to_send

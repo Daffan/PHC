@@ -45,9 +45,9 @@ from smpl_sim.smpllib.smpl_local_robot import SMPL_Robot
 from phc.utils.flags import flags
 from phc.env.tasks.base_task import BaseTask
 from tqdm import tqdm
-from poselib.poselib.skeleton.skeleton3d import SkeletonTree
+from poselib.skeleton.skeleton3d import SkeletonTree
 from collections import defaultdict
-from poselib.poselib.skeleton.skeleton3d import SkeletonMotion, SkeletonState
+from poselib.skeleton.skeleton3d import SkeletonMotion, SkeletonState
 from scipy.spatial.transform import Rotation as sRot
 import gc
 import torch.multiprocessing as mp
@@ -1122,60 +1122,82 @@ class Humanoid(BaseTask):
             
         elif self.humanoid_type in ["g1"]:
             if self.cfg.env.get("pd_v", 1) == 1:
-                self.p_gains = to_torch([
-                    # Pelvis is not controlled
-                    200.0, 200.0, 200.0,  # Left hip (pitch, roll, yaw)
-                    300.0,                # Left knee
-                    200.0, 200.0,         # Left ankle (pitch, roll)
-                    200.0, 200.0, 200.0,  # Right hip (pitch, roll, yaw)
-                    300.0,                # Right knee
-                    200.0, 200.0,         # Right ankle (pitch, roll)
-                    120.0,                # Torso
-                    40.0, 40.0, 40.0,     # Left shoulder (pitch, roll, yaw)
-                    60.0,                 # Left elbow pitch
-                    40.0,                 # Left elbow roll
-                    20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0,  # Left hand (zero to six)
-                    40.0, 40.0, 40.0,     # Right shoulder (pitch, roll, yaw)
-                    60.0,                 # Right elbow pitch
-                    40.0,                 # Right elbow roll
-                    20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0   # Right hand (zero to six)
-                ], device=self.device)
+                # self.p_gains = to_torch([
+                #     # Pelvis is not controlled
+                #     200.0, 200.0, 200.0,  # Left hip (pitch, roll, yaw)
+                #     300.0,                # Left knee
+                #     200.0, 200.0,         # Left ankle (pitch, roll)
+                #     200.0, 200.0, 200.0,  # Right hip (pitch, roll, yaw)
+                #     300.0,                # Right knee
+                #     200.0, 200.0,         # Right ankle (pitch, roll)
+                #     120.0,                # Torso
+                #     40.0, 40.0, 40.0,     # Left shoulder (pitch, roll, yaw)
+                #     60.0,                 # Left elbow pitch
+                #     40.0,                 # Left elbow roll
+                #     20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0,  # Left hand (zero to six)
+                #     40.0, 40.0, 40.0,     # Right shoulder (pitch, roll, yaw)
+                #     60.0,                 # Right elbow pitch
+                #     40.0,                 # Right elbow roll
+                #     20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0   # Right hand (zero to six)
+                # ], device=self.device)
                 
+                # self.d_gains = to_torch([
+                #     # Pelvis is not controlled
+                #     5.0, 5.0, 5.0,    # Left hip (pitch, roll, yaw)
+                #     7.5,              # Left knee
+                #     5.0, 5.0,         # Left ankle (pitch, roll)
+                #     5.0, 5.0, 5.0,    # Right hip (pitch, roll, yaw)
+                #     7.5,              # Right knee
+                #     5.0, 5.0,         # Right ankle (pitch, roll)
+                #     3.0,              # Torso
+                #     1.0, 1.0, 1.0,    # Left shoulder (pitch, roll, yaw)
+                #     1.5,              # Left elbow pitch
+                #     1.0,              # Left elbow roll
+                #     0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,  # Left hand (zero to six)
+                #     1.0, 1.0, 1.0,    # Right shoulder (pitch, roll, yaw)
+                #     1.5,              # Right elbow pitch
+                #     1.0,              # Right elbow roll
+                #     0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5   # Right hand (zero to six)
+                # ], device=self.device)
+                # self.torque_limits_hard_coded = to_torch([
+                #         88, 88, 88,       # Left hip (pitch, roll, yaw)
+                #         139,              # Left knee
+                #         40, 40,           # Left ankle (pitch, roll)
+                #         88, 88, 88,       # Right hip (pitch, roll, yaw)
+                #         139,              # Right knee
+                #         40, 40,           # Right ankle (pitch, roll)
+                #         88,               # Torso
+                #         20, 20, 20,       # Left shoulder (pitch, roll, yaw)
+                #         20,               # Left elbow pitch
+                #         20,               # Left elbow roll
+                #         0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7,  # Left hand (zero to six)
+                #         20, 20, 20,       # Right shoulder (pitch, roll, yaw)
+                #         20,               # Right elbow pitch
+                #         20,               # Right elbow roll
+                #         0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7   # Right hand (zero to six)
+                #     ], device=self.device)
+
+                self.p_gains = to_torch([
+                    100.0, 100.0, # 'head_AAHead_yaw', 'head_Head_pitch'
+                    70.0, 70.0, 70.0, 70.0, 70.0, 70.0, 70.0, 70.0,  # 'Right_Shoulder_Pitch', 'Right_Shoulder_Roll', 'Right_Elbow_Pitch', 'Right_Elbow_Yaw', 'Left_Shoulder_Pitch', 'Left_Shoulder_Roll', 'Left_Elbow_Pitch', 'Left_Elbow_Yaw'
+                    100.0, # torso_Waist
+                    200.0, 200.0, 200.0, 200.0, 50.0, 50.0, # 'leg_Left_Hip_Pitch', 'leg_Left_Hip_Roll', 'leg_Left_Hip_Yaw', 'leg_Left_Knee_Pitch', 'leg_Left_Ankle_Pitch', 'leg_Left_Ankle_Roll'
+                    200.0, 200.0, 200.0, 200.0, 50.0, 50.0, # 'leg_Right_Hip_Pitch', 'leg_Right_Hip_Roll', 'leg_Right_Hip_Yaw', 'leg_Right_Knee_Pitch', 'leg_Right_Ankle_Pitch', 'leg_Right_Ankle_Roll'
+                ])
                 self.d_gains = to_torch([
-                    # Pelvis is not controlled
-                    5.0, 5.0, 5.0,    # Left hip (pitch, roll, yaw)
-                    7.5,              # Left knee
-                    5.0, 5.0,         # Left ankle (pitch, roll)
-                    5.0, 5.0, 5.0,    # Right hip (pitch, roll, yaw)
-                    7.5,              # Right knee
-                    5.0, 5.0,         # Right ankle (pitch, roll)
-                    3.0,              # Torso
-                    1.0, 1.0, 1.0,    # Left shoulder (pitch, roll, yaw)
-                    1.5,              # Left elbow pitch
-                    1.0,              # Left elbow roll
-                    0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,  # Left hand (zero to six)
-                    1.0, 1.0, 1.0,    # Right shoulder (pitch, roll, yaw)
-                    1.5,              # Right elbow pitch
-                    1.0,              # Right elbow roll
-                    0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5   # Right hand (zero to six)
-                ], device=self.device)
+                    5.0, 5.0, # head
+                    4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, # upper body
+                    5.0, # waist
+                    6.0, 6.0, 6.0, 6.0, 2.0, 2.0, # left leg
+                    6.0, 6.0, 6.0, 6.0, 2.0, 2.0 # right leg
+                ])
                 self.torque_limits_hard_coded = to_torch([
-                        88, 88, 88,       # Left hip (pitch, roll, yaw)
-                        139,              # Left knee
-                        40, 40,           # Left ankle (pitch, roll)
-                        88, 88, 88,       # Right hip (pitch, roll, yaw)
-                        139,              # Right knee
-                        40, 40,           # Right ankle (pitch, roll)
-                        88,               # Torso
-                        20, 20, 20,       # Left shoulder (pitch, roll, yaw)
-                        20,               # Left elbow pitch
-                        20,               # Left elbow roll
-                        0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7,  # Left hand (zero to six)
-                        20, 20, 20,       # Right shoulder (pitch, roll, yaw)
-                        20,               # Right elbow pitch
-                        20,               # Right elbow roll
-                        0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7   # Right hand (zero to six)
-                    ], device=self.device)
+                    88, 88, # head
+                    88, 88, 88, 88, 88, 88, 88, 88, # upper body
+                    88, # waist
+                    139, 139, 139, 139, 40, 40, # left leg
+                    139, 139, 139, 139, 40, 40 # right leg
+                ])
             
             self.p_gains, self.d_gains = to_torch(self.p_gains), to_torch(self.d_gains)
             self.default_dof_pos = torch.zeros(1, self.num_dof).to(self.device)
@@ -1585,8 +1607,7 @@ class Humanoid(BaseTask):
         actions_scaled = actions * self.cfg.control.action_scale # 0.5
         # print(actions)
         if control_type=="P": # default 
-            
-            torques = self.p_gains*(actions_scaled + self.default_dof_pos - self._dof_pos) - self.d_gains*self._dof_vel
+            torques = self.p_gains*(actions_scaled + self.default_dof_pos - self._dof_pos) - self.d_gains * self._dof_vel
         elif control_type=="V":
             torques = self.p_gains*(actions_scaled - self.dof_vel) - self.d_gains*(self.dof_vel - self.last_dof_vel)/self.sim_params.dt
         elif control_type=="T":
