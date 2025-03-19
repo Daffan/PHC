@@ -9,6 +9,7 @@ out/
 # C extensions
 *.so
 *.pkl
+.bashrc
 
 # Distribution / packaging
 .Python
