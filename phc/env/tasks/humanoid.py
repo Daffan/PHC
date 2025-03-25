@@ -1178,25 +1178,25 @@ class Humanoid(BaseTask):
                 #     ], device=self.device)
 
                 self.p_gains = to_torch([
-                    100.0, 100.0, # 'head_AAHead_yaw', 'head_Head_pitch'
-                    70.0, 70.0, 70.0, 70.0, 70.0, 70.0, 70.0, 70.0,  # 'Right_Shoulder_Pitch', 'Right_Shoulder_Roll', 'Right_Elbow_Pitch', 'Right_Elbow_Yaw', 'Left_Shoulder_Pitch', 'Left_Shoulder_Roll', 'Left_Elbow_Pitch', 'Left_Elbow_Yaw'
-                    100.0, # torso_Waist
+                    20.0, 20.0, # 'head_AAHead_yaw', 'head_Head_pitch'
+                    20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0,  # 'Right_Shoulder_Pitch', 'Right_Shoulder_Roll', 'Right_Elbow_Pitch', 'Right_Elbow_Yaw', 'Left_Shoulder_Pitch', 'Left_Shoulder_Roll', 'Left_Elbow_Pitch', 'Left_Elbow_Yaw'
+                    150.0, # torso_Waist
                     200.0, 200.0, 200.0, 200.0, 50.0, 50.0, # 'leg_Left_Hip_Pitch', 'leg_Left_Hip_Roll', 'leg_Left_Hip_Yaw', 'leg_Left_Knee_Pitch', 'leg_Left_Ankle_Pitch', 'leg_Left_Ankle_Roll'
                     200.0, 200.0, 200.0, 200.0, 50.0, 50.0, # 'leg_Right_Hip_Pitch', 'leg_Right_Hip_Roll', 'leg_Right_Hip_Yaw', 'leg_Right_Knee_Pitch', 'leg_Right_Ankle_Pitch', 'leg_Right_Ankle_Roll'
                 ])
                 self.d_gains = to_torch([
-                    5.0, 5.0, # head
-                    4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, # upper body
+                    0.2, 0.2, # head
+                    0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, # upper body
                     5.0, # waist
-                    6.0, 6.0, 6.0, 6.0, 2.0, 2.0, # left leg
-                    6.0, 6.0, 6.0, 6.0, 2.0, 2.0 # right leg
+                    5.0, 5.0, 5.0, 5.0, 1.0, 1.0, # left leg
+                    5.0, 5.0, 5.0, 5.0, 1.0, 1.0 # right leg
                 ])
                 self.torque_limits_hard_coded = to_torch([
-                    88, 88, # head
-                    88, 88, 88, 88, 88, 88, 88, 88, # upper body
-                    88, # waist
-                    139, 139, 139, 139, 40, 40, # left leg
-                    139, 139, 139, 139, 40, 40 # right leg
+                    7, 7, # head
+                    18, 18, 18, 18, 18, 18, 18, 18, # upper body
+                    30, # waist
+                    45, 30, 30, 60, 20, 15, # left leg
+                    45, 30, 30, 60, 20, 15 # right leg
                 ])
             
             self.p_gains, self.d_gains = to_torch(self.p_gains), to_torch(self.d_gains)

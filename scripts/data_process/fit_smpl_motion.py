@@ -64,12 +64,14 @@ def process_motion(key_names, key_name_to_pkls, cfg):
     robot_joint_pick_idx = [robot_joint_names_augment.index(j) for j in robot_joint_pick]
     smpl_joint_pick_idx = [SMPL_BONE_ORDER_NAMES.index(j) for j in smpl_joint_pick]
     
-    smpl_parser_n = SMPL_Parser(model_path="data/smpl", gender="neutral")
     shape_new, scale = joblib.load(f"data/{cfg.robot.humanoid_type}/shape_optimized_v1.pkl") # TODO: run fit_smple_shape to get this
-    
+    print("debug 1")
+    smpl_parser_n = SMPL_Parser(model_path="data/smpl", gender="neutral", device=device)
+    print("debug 2")
     
     all_data = {}
     pbar = tqdm(key_names, position=0, leave=True)
+    print("Start processing motion data...")
     for data_key in pbar:
         amass_data = load_amass_data(key_name_to_pkls[data_key])
         if amass_data is None: continue
@@ -81,7 +83,6 @@ def process_motion(key_names, key_name_to_pkls, cfg):
         if N < 10:
             print("to short")
             continue
-
         with torch.no_grad():
             verts, joints = smpl_parser_n.get_joints_verts(pose_aa_walk, shape_new, trans)
             root_pos = joints[:, 0:1]
@@ -91,8 +92,6 @@ def process_motion(key_names, key_name_to_pkls, cfg):
             
         offset = joints[:, 0] - trans
         root_trans_offset = (trans + offset).clone()
-
-
 
         gt_root_rot_quat = torch.from_numpy((sRot.from_rotvec(pose_aa_walk[:, :3]) * sRot.from_quat([0.5, 0.5, 0.5, 0.5]).inv()).as_quat()).float() # can't directly use this 
         gt_root_rot = torch.from_numpy(sRot.from_quat(torch_utils.calc_heading_quat(gt_root_rot_quat)).as_rotvec()).float() # so only use the heading. 
@@ -112,7 +111,6 @@ def process_motion(key_names, key_name_to_pkls, cfg):
         sigma = 0.75  # Standard deviation of the Gaussian kernel
         B, T, J, D = dof_pos_new.shape    
 
-        
         for iteration in range(cfg.get("fitting_iterations", 500)):
             pose_aa_h1_new = torch.cat([root_rot_new[None, :, None], humanoid_fk.dof_axis * dof_pos_new, torch.zeros((1, N, num_augment_joint, 3)).to(device)], axis = 2)
             fk_return = humanoid_fk.fk_batch(pose_aa_h1_new, root_trans_offset[None, ] + root_pos_offset )
@@ -203,9 +201,10 @@ def main(cfg : DictConfig) -> None:
     if not cfg.get("fit_all", False):
         key_names = ["0-Transitions_mocap_mazen_c3d_dance_stand_poses"]
     
-    from multiprocessing import Pool
+    import torch.multiprocessing as mp
+    mp.set_start_method("spawn", force=True)
     jobs = key_names
-    num_jobs = 30
+    num_jobs = 16
     chunk = np.ceil(len(jobs)/num_jobs).astype(int)
     jobs= [jobs[i:i + chunk] for i in range(0, len(jobs), chunk)]
     job_args = [(jobs[i], key_name_to_pkls, cfg) for i in range(len(jobs))]
@@ -213,14 +212,16 @@ def main(cfg : DictConfig) -> None:
         all_data = process_motion(key_names, key_name_to_pkls, cfg)
     else:
         try:
-            pool = Pool(num_jobs)   # multi-processing
-            all_data_list = pool.starmap(process_motion, job_args)
+            with mp.Pool(num_jobs) as pool:
+                results = pool.starmap_async(process_motion, job_args).get(999999)
+                # results = [pool.apply_async(process_motion, args) for args in job_args]
+            # all_data_list = [res.get() for res in results]
+            all_data = {}
+            for data_dict in results:
+                all_data.update(data_dict)
         except KeyboardInterrupt:
             pool.terminate()
             pool.join()
-        all_data = {}
-        for data_dict in all_data_list:
-            all_data.update(data_dict)
     # import ipdb; ipdb.set_trace()
     if len(all_data) == 1:
         data_key = list(all_data.keys())[0]

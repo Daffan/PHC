@@ -299,6 +299,9 @@ class BaseTask():
                                 flags.trigger_input = not flags.trigger_input
                                 self.change_char_color()
                                 print("show_traj: ", flags.show_traj)
+                            elif msg['action'] == 'next_motion':
+                                self.next_func(None)
+                                print("next motion")
                         except:
                             import ipdb; ipdb.set_trace()
                             print("error parsing server message")

@@ -131,6 +131,9 @@ class HumanoidIm(humanoid_amp_task.HumanoidAMPTask):
     
     def reset_func(self, action):
         self.reset()
+
+    def reset(self, env_ids=None):
+        return super().reset(env_ids)
     
     def record_func(self, action):
         self.recording = not self.recording

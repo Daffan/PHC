@@ -38,12 +38,12 @@ zero_out_far: False
 zero_out_far_train: False
 #######
 
-default_humanoid_mass: 51.436 # H1 config
+default_humanoid_mass: 30.0 # H1 config
 real_weight: True
 kp_scale: 1
-remove_toe_im: False # For imitation 
+remove_toe_im: False # For imitation
 power_reward: True
-power_coefficient: 0.0000001
+power_coefficient: 0.00005
 
 
 powerScale: 1.0
